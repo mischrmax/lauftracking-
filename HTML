@@ -1,0 +1,1353 @@
+<!DOCTYPE html>
+
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Max Mischer – Laufanalyse</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --card: #1a1a24;
+    --border: #2a2a3a;
+    --orange: #ff6b2b;
+    --orange-dim: rgba(255,107,43,0.15);
+    --orange-glow: rgba(255,107,43,0.4);
+    --green: #2bff9b;
+    --green-dim: rgba(43,255,155,0.12);
+    --blue: #2b9bff;
+    --red: #ff4d6d;
+    --text: #e8e8f0;
+    --muted: #666680;
+    --font-display: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-display);
+    min-height: 100vh;
+    padding: 40px 24px;
+    background-image:
+      radial-gradient(ellipse at 20% 0%, rgba(255,107,43,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(43,155,255,0.05) 0%, transparent 50%);
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; }
+
+/* HEADER */
+.header {
+display: flex; justify-content: space-between; align-items: flex-end;
+border-bottom: 1px solid var(–border); padding-bottom: 24px; margin-bottom: 48px;
+}
+.header h1 { font-size: clamp(28px,5vw,48px); font-weight:800; letter-spacing:-1px; line-height:1; margin-bottom:6px; }
+.header h1 span { color: var(–orange); }
+.header p { font-family:var(–font-mono); font-size:11px; color:var(–muted); letter-spacing:2px; text-transform:uppercase; }
+.badge { display:inline-block; background:var(–orange-dim); color:var(–orange); border:1px solid var(–orange-glow); padding:3px 10px; border-radius:20px; font-size:10px; font-family:var(–font-mono); letter-spacing:1px; margin-top:4px; }
+.header-right { font-family:var(–font-mono); font-size:11px; color:var(–muted); text-align:right; }
+
+/* SECTION LABEL */
+.section-label {
+font-family: var(–font-mono); font-size:10px; letter-spacing:3px; text-transform:uppercase;
+color: var(–muted); margin-bottom:16px; display:flex; align-items:center; gap:12px;
+}
+.section-label::after { content:’’; flex:1; height:1px; background:var(–border); }
+
+/* GRIDS */
+.grid4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+.grid32 { display:grid; grid-template-columns:2fr 1fr; gap:16px; margin-bottom:24px; }
+
+/* STAT CARD */
+.stat-card {
+background:var(–card); border:1px solid var(–border); border-radius:16px; padding:20px;
+position:relative; overflow:hidden; transition:border-color 0.3s;
+}
+.stat-card::before { content:’’; position:absolute; top:0; left:0; right:0; height:2px; border-radius:16px 16px 0 0; }
+.stat-card.orange::before { background:var(–orange); }
+.stat-card.green::before { background:var(–green); }
+.stat-card.blue::before { background:var(–blue); }
+.stat-card.red::before { background:var(–red); }
+.stat-label { font-family:var(–font-mono); font-size:10px; color:var(–muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; }
+.stat-value { font-size:clamp(22px,3vw,32px); font-weight:800; letter-spacing:-1px; line-height:1; }
+.stat-card.orange .stat-value { color:var(–orange); }
+.stat-card.green .stat-value { color:var(–green); }
+.stat-card.blue .stat-value { color:var(–blue); }
+.stat-card.red .stat-value { color:var(–red); }
+.stat-sub { font-family:var(–font-mono); font-size:10px; color:var(–muted); margin-top:6px; }
+.stat-trend { position:absolute; top:16px; right:16px; font-family:var(–font-mono); font-size:11px; padding:2px 8px; border-radius:20px; }
+.trend-up { background:rgba(43,255,155,0.1); color:var(–green); }
+.trend-down { background:rgba(255,77,109,0.1); color:var(–red); }
+
+/* CHART CARD */
+.chart-card { background:var(–card); border:1px solid var(–border); border-radius:16px; padding:24px; }
+.chart-title { font-size:13px; font-weight:600; letter-spacing:0.5px; margin-bottom:4px; }
+.chart-subtitle { font-family:var(–font-mono); font-size:10px; color:var(–muted); margin-bottom:20px; letter-spacing:1px; }
+.chart-wrap { position:relative; height:220px; }
+
+/* SPLITS TABLE */
+.splits-table { width:100%; border-collapse:collapse; font-family:var(–font-mono); font-size:12px; }
+.splits-table th { text-align:left; color:var(–muted); font-size:10px; letter-spacing:1px; text-transform:uppercase; padding:0 8px 12px 0; border-bottom:1px solid var(–border); }
+.splits-table td { padding:10px 8px 10px 0; border-bottom:1px solid rgba(255,255,255,0.04); }
+.splits-table tr:last-child td { border-bottom:none; }
+.km-badge { background:var(–orange-dim); color:var(–orange); border-radius:6px; padding:2px 8px; font-size:11px; }
+.pace-bar { height:4px; border-radius:2px; background:var(–border); margin-top:3px; overflow:hidden; }
+.pace-fill { height:100%; border-radius:2px; }
+
+/* ZONE LEGEND */
+.zone-legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+.zone-item { display:flex; align-items:center; gap:6px; font-family:var(–font-mono); font-size:10px; color:var(–muted); }
+.zone-dot { width:8px; height:8px; border-radius:50%; }
+
+/* ═══════════════════════════════════════════
+NEXT RUN PLANNER
+═══════════════════════════════════════════ */
+.planner-card {
+background: linear-gradient(135deg, #1a1a2e 0%, #16162a 100%);
+border: 1px solid rgba(255,107,43,0.3);
+border-radius: 20px;
+padding: 32px;
+margin-bottom: 24px;
+position: relative;
+overflow: hidden;
+}
+.planner-card::before {
+content: ‘’;
+position: absolute; top:0; left:0; right:0; height:3px;
+background: linear-gradient(90deg, var(–orange), var(–green));
+border-radius: 20px 20px 0 0;
+}
+.planner-glow {
+position:absolute; top:-60px; right:-60px; width:200px; height:200px;
+background: radial-gradient(circle, rgba(255,107,43,0.08) 0%, transparent 70%);
+pointer-events:none;
+}
+
+.planner-header {
+display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:32px; flex-wrap:wrap; gap:16px;
+}
+.planner-title { font-size:20px; font-weight:800; letter-spacing:-0.5px; }
+.planner-title span { color:var(–orange); }
+
+.planner-body { display:grid; grid-template-columns:1fr 1fr; gap:32px; }
+
+/* SLIDERS */
+.sliders-col { display:flex; flex-direction:column; gap:28px; }
+.slider-group { }
+.slider-top { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:10px; }
+.slider-name { font-size:12px; font-weight:600; letter-spacing:0.3px; }
+.slider-value {
+font-family:var(–font-mono); font-size:16px; font-weight:700; color:var(–orange);
+transition: color 0.3s;
+}
+.slider-value.zone2 { color:var(–green); }
+
+input[type=range] {
+-webkit-appearance:none; appearance:none;
+width:100%; height:6px; border-radius:3px;
+background: var(–border); outline:none; cursor:pointer;
+transition: background 0.3s;
+}
+input[type=range]::-webkit-slider-thumb {
+-webkit-appearance:none; appearance:none;
+width:20px; height:20px; border-radius:50%;
+background: var(–orange); cursor:pointer;
+border:3px solid var(–bg);
+box-shadow: 0 0 12px rgba(255,107,43,0.5);
+transition: transform 0.2s, box-shadow 0.2s;
+}
+input[type=range]::-webkit-slider-thumb:hover {
+transform:scale(1.2); box-shadow:0 0 20px rgba(255,107,43,0.7);
+}
+input[type=range].green-slider::-webkit-slider-thumb {
+background:var(–green); box-shadow:0 0 12px rgba(43,255,155,0.5);
+}
+input[type=range].green-slider::-webkit-slider-thumb:hover { box-shadow:0 0 20px rgba(43,255,155,0.7); }
+
+.slider-hints { display:flex; justify-content:space-between; margin-top:4px; }
+.slider-hint { font-family:var(–font-mono); font-size:9px; color:var(–muted); }
+
+/* PREDICTION PANEL */
+.prediction-col { display:flex; flex-direction:column; gap:12px; }
+.pred-header { font-family:var(–font-mono); font-size:10px; color:var(–muted); letter-spacing:2px; text-transform:uppercase; margin-bottom:4px; }
+
+.pred-metric {
+background: rgba(255,255,255,0.03); border:1px solid var(–border);
+border-radius:12px; padding:16px 20px;
+display:flex; justify-content:space-between; align-items:center;
+transition: border-color 0.3s, background 0.3s;
+}
+.pred-metric.highlight {
+background: rgba(43,255,155,0.06); border-color:rgba(43,255,155,0.3);
+}
+.pred-metric.warning {
+background: rgba(255,107,43,0.06); border-color:rgba(255,107,43,0.3);
+}
+.pred-metric-name { font-size:12px; color:var(–muted); font-family:var(–font-mono); }
+.pred-metric-val { font-size:18px; font-weight:800; letter-spacing:-0.5px; transition:color 0.3s; }
+.pred-metric-val.good { color:var(–green); }
+.pred-metric-val.warn { color:var(–orange); }
+.pred-metric-val.neutral { color:var(–blue); }
+
+.zone-indicator {
+margin-top:4px; padding:16px 20px; border-radius:12px; border:2px solid;
+text-align:center; transition:all 0.4s;
+}
+.zone-indicator .zone-name { font-size:18px; font-weight:800; margin-bottom:4px; }
+.zone-indicator .zone-desc { font-family:var(–font-mono); font-size:10px; opacity:0.7; }
+
+.vs-row {
+display:flex; gap:8px; align-items:center; margin-top:4px;
+}
+.vs-box { flex:1; background:rgba(255,255,255,0.03); border:1px solid var(–border); border-radius:10px; padding:10px; text-align:center; }
+.vs-box-label { font-family:var(–font-mono); font-size:9px; color:var(–muted); text-transform:uppercase; letter-spacing:1px; }
+.vs-box-val { font-size:14px; font-weight:700; margin-top:2px; }
+.vs-sep { font-family:var(–font-mono); font-size:11px; color:var(–muted); }
+
+.trend-arrow { font-size:12px; font-family:var(–font-mono); margin-top:6px; text-align:center; }
+
+/* AVERAGES IMPACT */
+.impact-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:8px; }
+.impact-box {
+background:rgba(255,255,255,0.03); border:1px solid var(–border); border-radius:10px;
+padding:12px; text-align:center; transition:all 0.3s;
+}
+.impact-label { font-family:var(–font-mono); font-size:9px; color:var(–muted); text-transform:uppercase; letter-spacing:1px; }
+.impact-val { font-size:15px; font-weight:800; margin-top:4px; transition:color 0.3s; }
+.impact-delta { font-family:var(–font-mono); font-size:9px; margin-top:2px; }
+
+/* FOOTER */
+.footer { text-align:center; font-family:var(–font-mono); font-size:10px; color:var(–muted); letter-spacing:1px; border-top:1px solid var(–border); padding-top:20px; margin-top:32px; }
+
+@media(max-width:768px) {
+.grid4 { grid-template-columns:repeat(2,1fr); }
+.grid2,.grid32 { grid-template-columns:1fr; }
+.planner-body { grid-template-columns:1fr; }
+.impact-grid { grid-template-columns:repeat(3,1fr); }
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+
+  <!-- HEADER -->
+
+  <div class="header">
+    <div>
+      <h1>MAX <span>MISCHER</span></h1>
+      <p>Laufanalyse · Karlsruhe · 2026</p>
+      <span class="badge">WIEDEREINSTIEG</span>
+    </div>
+    <div class="header-right">
+      <div>6 LÄUFE ANALYSIERT</div>
+      <div style="margin-top:4px">28. FEB – 11. MÄR 2026</div>
+    </div>
+  </div>
+
+  <!-- KPI CARDS -->
+
+  <div class="section-label">Bisherige Läufe</div>
+  <div class="grid4">
+    <div class="stat-card orange">
+      <div class="stat-label">Gesamtdistanz</div>
+      <div class="stat-value">29,0<span style="font-size:16px;font-weight:400"> km</span></div>
+      <div class="stat-sub">in 12 Tagen</div>
+      <div class="stat-trend trend-up">↑ WACHSTUM</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Ø Herzfrequenz</div>
+      <div class="stat-value">146<span style="font-size:16px;font-weight:400"> bpm</span></div>
+      <div class="stat-sub">Zone 2–3 Bereich</div>
+      <div class="stat-trend trend-down">↓ BESSER</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Bestes Tempo</div>
+      <div class="stat-value">7:49<span style="font-size:16px;font-weight:400"> /km</span></div>
+      <div class="stat-sub">Endspurt 08. Mär</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Kalorien gesamt</div>
+      <div class="stat-value">2346<span style="font-size:16px;font-weight:400"> kcal</span></div>
+      <div class="stat-sub">alle Läufe</div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+
+  <div class="grid2">
+    <div class="chart-card">
+      <div class="chart-title">Distanz pro Lauf</div>
+      <div class="chart-subtitle">TENDENZ: STEIGEND · +32% IN 10 TAGEN</div>
+      <div class="chart-wrap"><canvas id="distanzChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Durchschnittstempo</div>
+      <div class="chart-subtitle">TENDENZ: SCHNELLER WERDEND</div>
+      <div class="chart-wrap"><canvas id="tempoChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+
+  <div class="grid32">
+    <div class="chart-card">
+      <div class="chart-title">Herzfrequenz-Verlauf</div>
+      <div class="zone-legend">
+        <div class="zone-item"><div class="zone-dot" style="background:#2bff9b"></div>Zone 2 (130–145)</div>
+        <div class="zone-item"><div class="zone-dot" style="background:#ff6b2b"></div>Zone 3+ (145+)</div>
+        <div class="zone-item"><div class="zone-dot" style="background:#ff4d6d"></div>Max HF</div>
+      </div>
+      <div class="chart-subtitle">Ø UND MAX PRO LAUF</div>
+      <div class="chart-wrap"><canvas id="herzChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Heutige Splits</div>
+      <div class="chart-subtitle">KM-ZWISCHENZEITEN · 11. MÄR</div>
+      <table class="splits-table">
+        <thead><tr><th>KM</th><th>Tempo</th><th>HF</th></tr></thead>
+        <tbody id="splitsBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 3 -->
+
+  <div class="grid2">
+    <div class="chart-card">
+      <div class="chart-title">Zone 2 Compliance</div>
+      <div class="chart-subtitle">WIE GUT BIST DU IN ZONE 2 GEBLIEBEN?</div>
+      <div class="chart-wrap"><canvas id="zoneChart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">Kalorienverbrauch</div>
+      <div class="chart-subtitle">PRO LAUF IN KCAL</div>
+      <div class="chart-wrap"><canvas id="kalChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       NEXT RUN PLANNER
+  ═══════════════════════════════════════════ -->
+
+  <div class="section-label">Nächster Lauf – Planer</div>
+
+  <div class="planner-card">
+    <div class="planner-glow"></div>
+
+```
+<div class="planner-header">
+  <div>
+    <div class="planner-title">Was passiert beim <span>nächsten Lauf</span>?</div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:1px;">STELLE DIE REGLER EIN UND SIEH WIE SICH DEINE DURCHSCHNITTE ÄNDERN</div>
+  </div>
+  <!-- WEATHER WIDGET -->
+  <div style="background:rgba(43,155,255,0.08);border:1px solid rgba(43,155,255,0.25);border-radius:16px;padding:16px 20px;min-width:260px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">🌍 Karlsruhe · Jetzt</div>
+    <div style="display:flex;align-items:center;gap:16px;margin-bottom:12px;">
+      <div style="font-size:36px">☁️</div>
+      <div>
+        <div style="font-size:28px;font-weight:800;color:#2b9bff;letter-spacing:-1px;line-height:1">12.7°C</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px">Bewölkt</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:4px;border-top:1px solid rgba(255,255,255,0.06);padding-top:10px;">
+      <div style="text-align:center"><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">MI</div><div style="font-size:14px;margin:2px 0">🌧️</div><div style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;font-weight:700">78%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">14°</div></div>
+      <div style="text-align:center"><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">DO</div><div style="font-size:14px;margin:2px 0">🌦️</div><div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;font-weight:700">10%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">12°</div></div>
+      <div style="text-align:center"><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">FR</div><div style="font-size:14px;margin:2px 0">🌤️</div><div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;font-weight:700">10%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">15°</div></div>
+      <div style="text-align:center"><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">SA</div><div style="font-size:14px;margin:2px 0">🌧️</div><div style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;font-weight:700">45%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">8°</div></div>
+      <div style="text-align:center"><div style="font-family:var(--font-mono);font-size:8px;color:var(--muted)">SO</div><div style="font-size:14px;margin:2px 0">⛅</div><div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;font-weight:700">20%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">11°</div></div>
+    </div>
+    <div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:rgba(255,107,43,0.1);border:1px solid rgba(255,107,43,0.2);font-family:var(--font-mono);font-size:9px;color:#ff6b2b;letter-spacing:0.5px;">
+      ⚠️ Heute: 78% Regen – besser Do oder Fr laufen!
+    </div>
+  </div>
+</div>
+
+<!-- WEATHER IMPACT BAR -->
+<div style="margin-bottom:24px;padding:14px 18px;border-radius:12px;display:flex;align-items:center;gap:20px;flex-wrap:wrap;background:rgba(43,155,255,0.06);border:1px solid rgba(43,155,255,0.2);font-family:var(--font-mono);font-size:10px;">
+  <div style="color:var(--muted);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;">🌡️ Wettereinfluss heute:</div>
+  <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">Temperatur</span><span style="color:#2bff9b;font-weight:700">12.7°C ✓ Ideal</span></div>
+  <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">HF-Effekt</span><span style="color:#2bff9b;font-weight:700">±0 bpm</span></div>
+  <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">Tempo-Effekt</span><span style="color:#2bff9b;font-weight:700">neutral</span></div>
+  <div style="display:flex;gap:6px;align-items:center"><span style="color:var(--muted)">Regen</span><span style="color:#ff6b2b;font-weight:700">78% ⚠️ Nasse Straßen</span></div>
+  <div id="wi-overall" style="margin-left:auto;padding:5px 14px;border-radius:20px;font-weight:700;font-size:11px;background:rgba(43,255,155,0.1);color:#2bff9b;border:1px solid rgba(43,255,155,0.3);">GUTE LAUFBEDINGUNGEN</div>
+</div>
+
+<div class="planner-body">
+
+  <!-- SLIDERS -->
+  <div class="sliders-col">
+
+    <div class="slider-group">
+      <div class="slider-top">
+        <div class="slider-name">📍 Distanz</div>
+        <div class="slider-value" id="val-distanz">7,0 km</div>
+      </div>
+      <input type="range" id="sl-distanz" min="2" max="15" step="0.5" value="7">
+      <div class="slider-hints"><span class="slider-hint">2 km</span><span class="slider-hint">15 km</span></div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-top">
+        <div class="slider-name">⚡ Tempo</div>
+        <div class="slider-value" id="val-tempo">8:36 /km</div>
+      </div>
+      <input type="range" id="sl-tempo" min="6" max="12" step="0.083333" value="8.6">
+      <div class="slider-hints"><span class="slider-hint">6:00 /km (schnell)</span><span class="slider-hint">12:00 /km (langsam)</span></div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-top">
+        <div class="slider-name">❤️ Ø Herzfrequenz</div>
+        <div class="slider-value" id="val-hf">152 bpm</div>
+      </div>
+      <input type="range" class="green-slider" id="sl-hf" min="120" max="175" step="1" value="152">
+      <div class="slider-hints"><span class="slider-hint">120 bpm (Zone 1)</span><span class="slider-hint">175 bpm (Zone 5)</span></div>
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-top">
+        <div class="slider-name">⛰️ Höhenmeter</div>
+        <div class="slider-value" id="val-hoehe">104 m</div>
+      </div>
+      <input type="range" id="sl-hoehe" min="0" max="300" step="5" value="104">
+      <div class="slider-hints"><span class="slider-hint">0 m (flach)</span><span class="slider-hint">300 m (Hügel)</span></div>
+    </div>
+
+  </div>
+
+  <!-- PREDICTIONS -->
+  <div class="prediction-col">
+    <div class="pred-header">Voraussage für diesen Lauf</div>
+
+    <div class="zone-indicator" id="zone-indicator">
+      <div class="zone-name" id="zone-name">Zone 3</div>
+      <div class="zone-desc" id="zone-desc">Anstrengend · Tempo mit Mühe haltbar</div>
+    </div>
+
+    <div class="pred-metric" id="pm-kcal">
+      <div class="pred-metric-name">🔥 Kalorien</div>
+      <div class="pred-metric-val neutral" id="pred-kcal">587 kcal</div>
+    </div>
+
+    <div class="pred-metric" id="pm-zeit">
+      <div class="pred-metric-name">⏱ Laufzeit</div>
+      <div class="pred-metric-val neutral" id="pred-zeit">1:00:12</div>
+    </div>
+
+    <div class="pred-metric" id="pm-hf-impact">
+      <div class="pred-metric-name">📈 HF-Anpassung (Höhe)</div>
+      <div class="pred-metric-val warn" id="pred-hf-impact">+0 bpm</div>
+    </div>
+
+    <div style="margin-top:4px">
+      <div class="pred-header" style="margin-bottom:8px">Einfluss auf Gesamtdurchschnitte</div>
+      <div class="impact-grid">
+        <div class="impact-box">
+          <div class="impact-label">Ø Distanz</div>
+          <div class="impact-val" id="avg-distanz" style="color:var(--orange)">—</div>
+          <div class="impact-delta" id="delta-distanz" style="color:var(--muted)"></div>
+        </div>
+        <div class="impact-box">
+          <div class="impact-label">Ø Tempo</div>
+          <div class="impact-val" id="avg-tempo" style="color:var(--green)">—</div>
+          <div class="impact-delta" id="delta-tempo" style="color:var(--muted)"></div>
+        </div>
+        <div class="impact-box">
+          <div class="impact-label">Ø HF</div>
+          <div class="impact-val" id="avg-hf" style="color:var(--blue)">—</div>
+          <div class="impact-delta" id="delta-hf" style="color:var(--muted)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="trend-arrow" id="trend-msg" style="color:var(--muted); margin-top:8px; font-size:10px;"></div>
+  </div>
+</div>
+
+<!-- CHART inside planner -->
+<div style="margin-top:28px; border-top:1px solid var(--border); padding-top:24px;">
+  <div class="chart-title">Distanz-Verlauf inkl. geplantem Lauf</div>
+  <div class="chart-subtitle">GRAU = BISHERIGE LÄUFE · LEUCHTEND = NÄCHSTER LAUF</div>
+  <div style="position:relative; height:180px;">
+    <canvas id="plannerChart"></canvas>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       RACE TIME PREDICTOR
+  ═══════════════════════════════════════════ -->
+
+  <div class="section-label">Wettkampfzeit-Prognose</div>
+
+  <div class="planner-card" style="margin-bottom:24px;">
+    <div class="planner-glow" style="background:radial-gradient(circle, rgba(43,155,255,0.08) 0%, transparent 70%)"></div>
+
+```
+<div class="planner-header">
+  <div>
+    <div class="planner-title">Deine realistischen <span style="color:var(--blue)">Wettkampfzeiten</span></div>
+    <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px;letter-spacing:1px;">BASIEREND AUF DEINER AKTUELLEN LEISTUNG · RIEGEL-FORMEL + ERMÜDUNGSFAKTOR</div>
+  </div>
+  <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);text-align:right;">
+    <div>BASIS: Ø TEMPO 8:36 /km</div>
+    <div style="margin-top:4px">VO2MAX GESCHÄTZT: ~42</div>
+  </div>
+</div>
+
+<!-- Race cards -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:32px;" id="race-cards">
+</div>
+
+<!-- Progress to goal chart -->
+<div style="border-top:1px solid var(--border);padding-top:24px;">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start;">
+
+    <!-- Bar chart -->
+    <div>
+      <div class="chart-title">Prognostizierte Zeiten</div>
+      <div class="chart-subtitle">AKTUELL vs. ZIEL IN 12 MONATEN</div>
+      <div style="position:relative;height:220px;">
+        <canvas id="raceTimeChart"></canvas>
+      </div>
+    </div>
+
+    <!-- Training progress timeline -->
+    <div>
+      <div class="chart-title">Realistischer Fortschritt</div>
+      <div class="chart-subtitle">WANN ERREICHST DU WELCHES ZIEL?</div>
+      <div id="timeline" style="display:flex;flex-direction:column;gap:12px;margin-top:8px;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Pace comparison -->
+<div style="border-top:1px solid var(--border);padding-top:24px;margin-top:8px;">
+  <div class="chart-title" style="margin-bottom:4px;">Tempo-Vergleich über die Distanzen</div>
+  <div class="chart-subtitle">WARUM WIRD MAN BEI LÄNGEREN DISTANZEN LANGSAMER?</div>
+  <div style="position:relative;height:180px;">
+    <canvas id="paceDropChart"></canvas>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- LAUF FEEDBACK 11. MÄR -->
+
+  <div class="section-label">Lauf-Feedback · 11. März 2026</div>
+  <div style="background:linear-gradient(135deg,#141e1a 0%,#0f1a15 100%);border:1px solid rgba(43,255,155,0.35);border-radius:20px;padding:28px;margin-bottom:24px;position:relative;overflow:hidden;">
+    <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2bff9b,#2b9bff,#ff6b2b);border-radius:20px 20px 0 0;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
+      <div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;letter-spacing:3px;margin-bottom:4px;">LAUF AM NACHMITTAG · OSTSTADT KARLSRUHE · 17:58 UHR</div>
+        <div style="font-size:22px;font-weight:800;">5,75 km &nbsp;·&nbsp; 55:43 &nbsp;·&nbsp; <span style="color:#2bff9b;">140 bpm Ø</span></div>
+      </div>
+      <div style="background:rgba(43,255,155,0.12);border:1px solid rgba(43,255,155,0.3);border-radius:14px;padding:12px 20px;text-align:center;">
+        <div style="font-size:32px;line-height:1;">✅</div>
+        <div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;margin-top:4px;letter-spacing:1px;">ZONE 2 PERFEKT</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px;">
+      <div style="background:rgba(43,255,155,0.06);border:1px solid rgba(43,255,155,0.2);border-radius:12px;padding:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">✅ Was super lief</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;line-height:1.5;"><strong>Niedrigste Ø-HF</strong> aller Läufe – 140 bpm. Dein Herz wird effizienter.</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>75% Zeit in Zone 2</strong> – bisher bester Zone-2-Lauf überhaupt.</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>6 neue Bestzeiten</strong> in Strava – 1-Meile in 14:41 / 9:08 /km.</div>
+        </div>
+      </div>
+      <div style="background:rgba(255,107,43,0.06);border:1px solid rgba(255,107,43,0.2);border-radius:12px;padding:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">⚠️ Auffällig</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;line-height:1.5;"><strong>Km 1→4 Tempo-Einbruch:</strong> 8:44 → 10:17 /km – zu schneller Start kostet dich 1:30 Min/km.</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>Max HF 171 bpm</strong> – kurzer Zone-5-Spike bei ~4 km (Anstieg oder Ampel-Sprint).</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>Sehr unruhiger Tempo-Graph</strong> – Oststadt-Kreuzungen unterbrechen den Laufrhythmus.</div>
+        </div>
+      </div>
+      <div style="background:rgba(43,155,255,0.06);border:1px solid rgba(43,155,255,0.2);border-radius:12px;padding:16px;">
+        <div style="font-family:var(--font-mono);font-size:9px;color:#2b9bff;letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">💡 Nächstes Mal</div>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <div style="font-size:12px;line-height:1.5;"><strong>Km 1 auf 9:30–10:00/km drosseln</strong> – langsamer starten, gleichmäßiger enden.</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>Ampeln nicht sprinten</strong> – einfach ruhig anlaufen statt beschleunigen.</div>
+          <div style="font-size:12px;line-height:1.5;"><strong>Route Schlossgarten/Stadtgarten</strong> testen – weniger Stopps, sauberere Splits.</div>
+        </div>
+      </div>
+    </div>
+    <div style="border-top:1px solid rgba(255,255,255,0.06);padding-top:20px;">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:14px;">Dein Fortschritt seit dem ersten Lauf (28. Feb)</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;">
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Ø Herzfrequenz</span><span style="font-family:var(--font-mono);font-size:10px;color:#2bff9b;font-weight:700">▼ 5 bpm</span></div>
+          <div style="background:var(--border);border-radius:4px;height:6px;"><div style="width:72%;height:100%;background:linear-gradient(90deg,#2bff9b,#2b9bff);border-radius:4px;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">145 bpm</span><span style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;">140 bpm heute</span></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Zone-2-Anteil</span><span style="font-family:var(--font-mono);font-size:10px;color:#2bff9b;font-weight:700">▲ +33%</span></div>
+          <div style="background:var(--border);border-radius:4px;height:6px;"><div style="width:75%;height:100%;background:linear-gradient(90deg,#2bff9b,#2b9bff);border-radius:4px;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">42% vorher</span><span style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;">75% heute</span></div>
+        </div>
+        <div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)">Gesamtdistanz</span><span style="font-family:var(--font-mono);font-size:10px;color:#ff6b2b;font-weight:700">▲ +24%</span></div>
+          <div style="background:var(--border);border-radius:4px;height:6px;"><div style="width:85%;height:100%;background:linear-gradient(90deg,#ff6b2b,#ff4d6d);border-radius:4px;"></div></div>
+          <div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-family:var(--font-mono);font-size:9px;color:var(--muted)">23,3 km vorher</span><span style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;">29,0 km gesamt</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       NEXT TWO RUNS OPTIMIZER
+  ═══════════════════════════════════════════ -->
+
+  <div class="section-label">Deine nächsten 2 Läufe – Optimierter Trainingsplan</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+
+```
+<!-- LAUF 1 -->
+<div style="
+  background: linear-gradient(135deg, #1a2420 0%, #141e1a 100%);
+  border: 1px solid rgba(43,255,155,0.3); border-radius:20px; padding:28px;
+  position:relative; overflow:hidden;
+">
+  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#2bff9b,#2b9bff);border-radius:20px 20px 0 0;"></div>
+  <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:radial-gradient(circle,rgba(43,255,155,0.07) 0%,transparent 70%);pointer-events:none;"></div>
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">Lauf #1 · Do, 11. Mär ✓</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;">Zone 2 <span style="color:#2bff9b;">Grundlage</span> <span style="font-size:13px;background:rgba(43,255,155,0.15);color:#2bff9b;padding:2px 8px;border-radius:6px;font-family:var(--font-mono);font-size:10px;">ERLEDIGT ✓</span></div>
+    </div>
+    <div style="background:rgba(43,255,155,0.1);border:1px solid rgba(43,255,155,0.3);border-radius:12px;padding:8px 14px;text-align:center;">
+      <div style="font-size:22px">🧱</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:#2bff9b;margin-top:2px;letter-spacing:1px;">AUFBAU</div>
+    </div>
+  </div>
+
+  <!-- Weather badge for Thu -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 12px;background:rgba(43,255,155,0.06);border-radius:8px;border:1px solid rgba(43,255,155,0.15);">
+    <span style="font-size:16px;">🌦️</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:#2bff9b;">Do, 12. Mär · 12°C · 10% Regen</span>
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-left:auto;">IDEAL</span>
+  </div>
+
+  <!-- Key metrics -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Distanz</div>
+      <div style="font-size:18px;font-weight:800;color:#2bff9b;margin-top:4px;">5–6 km</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Ziel-HF</div>
+      <div style="font-size:18px;font-weight:800;color:#2bff9b;margin-top:4px;">130–145</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Zieltempo</div>
+      <div style="font-size:18px;font-weight:800;color:#2bff9b;margin-top:4px;">9:10–9:30</div>
+    </div>
+  </div>
+
+  <!-- Step by step plan -->
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">ABLAUF</div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(43,255,155,0.15);border:1px solid rgba(43,255,155,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#2bff9b;flex-shrink:0;font-weight:700;">1</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">5 Min Gehen / lockeres Einlaufen</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">HF unter 120 bpm · Muskeln aufwärmen</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(43,255,155,0.15);border:1px solid rgba(43,255,155,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#2bff9b;flex-shrink:0;font-weight:700;">2</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">40–50 Min Zone 2 laufen</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">HF konsequent 130–145 bpm · Kannst dich noch unterhalten · Tempo egal – HF zählt!</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(43,255,155,0.15);border:1px solid rgba(43,255,155,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#2bff9b;flex-shrink:0;font-weight:700;">3</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">5 Min Cool-down Gehen</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">HF unter 110 bpm bringen · danach 5 Min dehnen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why this run -->
+  <div style="background:rgba(43,255,155,0.05);border-radius:10px;padding:14px;border-left:3px solid #2bff9b;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:#2bff9b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Warum genau das?</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.6;">
+      Dein letzter Lauf war intensiver (Ø 152 bpm). Jetzt braucht dein Körper einen echten Zone-2-Lauf um Fettverbrennung zu trainieren und die aerobe Basis aufzubauen. Donnerstag-Wetter ist perfekt dafür.
+    </div>
+  </div>
+</div>
+
+<!-- LAUF 2 -->
+<div style="
+  background: linear-gradient(135deg, #1e1a24 0%, #181420 100%);
+  border: 1px solid rgba(255,107,43,0.3); border-radius:20px; padding:28px;
+  position:relative; overflow:hidden;
+">
+  <div style="position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#ff6b2b,#ff4d6d);border-radius:20px 20px 0 0;"></div>
+  <div style="position:absolute;top:-40px;right:-40px;width:140px;height:140px;background:radial-gradient(circle,rgba(255,107,43,0.07) 0%,transparent 70%);pointer-events:none;"></div>
+
+  <!-- Header -->
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px;">Lauf #2 · So, 15. Mär → NÄCHSTER LAUF</div>
+      <div style="font-size:20px;font-weight:800;letter-spacing:-0.5px;">Langer <span style="color:#ff6b2b;">Ausdauerlauf</span></div>
+    </div>
+    <div style="background:rgba(255,107,43,0.1);border:1px solid rgba(255,107,43,0.3);border-radius:12px;padding:8px 14px;text-align:center;">
+      <div style="font-size:22px">📈</div>
+      <div style="font-family:var(--font-mono);font-size:8px;color:#ff6b2b;margin-top:2px;letter-spacing:1px;">DISTANZ</div>
+    </div>
+  </div>
+
+  <!-- Weather badge for Sun -->
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:20px;padding:8px 12px;background:rgba(255,107,43,0.06);border-radius:8px;border:1px solid rgba(255,107,43,0.15);">
+    <span style="font-size:16px;">⛅</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:#ff6b2b;">So, 15. Mär · 11°C · 20% Regen</span>
+    <span style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-left:auto;">GUT</span>
+  </div>
+
+  <!-- Key metrics -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;">
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Distanz</div>
+      <div style="font-size:18px;font-weight:800;color:#ff6b2b;margin-top:4px;">7–8 km</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Ziel-HF</div>
+      <div style="font-size:18px;font-weight:800;color:#ff6b2b;margin-top:4px;">135–150</div>
+    </div>
+    <div style="background:rgba(255,255,255,0.03);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border);">
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Zieltempo</div>
+      <div style="font-size:18px;font-weight:800;color:#ff6b2b;margin-top:4px;">9:00–9:20</div>
+    </div>
+  </div>
+
+  <!-- Step by step plan -->
+  <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:2px;">ABLAUF</div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,107,43,0.15);border:1px solid rgba(255,107,43,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#ff6b2b;flex-shrink:0;font-weight:700;">1</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">5 Min lockeres Einlaufen</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Sehr langsam starten · Körper wecken</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,107,43,0.15);border:1px solid rgba(255,107,43,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#ff6b2b;flex-shrink:0;font-weight:700;">2</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">55–65 Min gleichmäßig laufen</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Erste 4 km Zone 2 (HF &lt;145) · Letzte 3 km darf HF auf 150 steigen · Kein Sprint!</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,107,43,0.15);border:1px solid rgba(255,107,43,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#ff6b2b;flex-shrink:0;font-weight:700;">3</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">Optional: letztes km etwas schneller</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Wenn du noch Energie hast: letzten km auf ~8:20 /km · kein Vollsprint</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:12px;align-items:flex-start;">
+      <div style="width:28px;height:28px;border-radius:50%;background:rgba(255,107,43,0.15);border:1px solid rgba(255,107,43,0.4);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:10px;color:#ff6b2b;flex-shrink:0;font-weight:700;">4</div>
+      <div>
+        <div style="font-size:12px;font-weight:600;">5–10 Min dehnen danach</div>
+        <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:2px;">Wade, Oberschenkel, Hüftbeuger · wichtig bei längeren Läufen</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Why this run -->
+  <div style="background:rgba(255,107,43,0.05);border-radius:10px;padding:14px;border-left:3px solid #ff6b2b;">
+    <div style="font-family:var(--font-mono);font-size:9px;color:#ff6b2b;letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;">Warum genau das?</div>
+    <div style="font-size:12px;color:var(--text);line-height:1.6;">
+      Der wöchentliche Longrun ist das wichtigste Training für Ausdauer und Fettverbrennung. 7–8 km wäre deine neue persönliche Bestdistanz und liegt genau im 10%-Aufbaubereich. Sonntag-Wetter ist solide.
+    </div>
+  </div>
+</div>
+```
+
+  </div>
+
+  <!-- TRAINING PHILOSOPHY CARD -->
+
+  <div style="
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:24px; margin-bottom:24px;
+    display:grid; grid-template-columns: repeat(4,1fr); gap:20px;
+  ">
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">🎯 Das Prinzip</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">80/20 Regel</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">80% aller Läufe in Zone 2, 20% intensiver. Das machen Elite-Läufer genauso.</div>
+    </div>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">📅 Dein Rhythmus</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Do + So ideal</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">3 Tage Pause zwischen den Läufen ist optimal für Muskelregeneration beim Wiedereinstieg.</div>
+    </div>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">📈 Fortschritt messen</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Gleiche Strecke, niedrigere HF</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">Wenn du in 4 Wochen dieselbe Runde mit 5 bpm weniger läufst – das ist echter Fortschritt.</div>
+    </div>
+    <div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;">⚠️ Nicht tun</div>
+      <div style="font-size:13px;font-weight:600;margin-bottom:6px;">Jeden Lauf pushen</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);line-height:1.6;">Wer immer in Zone 3–4 läuft, verbessert sich langsamer und verletzt sich öfter.</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    DATEN VON APPLE WATCH SERIES 5 · ANALYSIERT AM 11.03.2026 · KARLSRUHE, BADEN-WÜRTTEMBERG
+  </div>
+</div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────
+const runs = [
+  { date:'28. Feb', distanz:5.30, tempoMin:9+13/60, hfAvg:145, hfMax:176, kcal:430 },
+  { date:'03. Mär', distanz:4.90, tempoMin:9+17/60, hfAvg:144, hfMax:176, kcal:387 },
+  { date:'06. Mär', distanz:5.07, tempoMin:9+8/60,  hfAvg:142, hfMax:170, kcal:408 },
+  { date:'06. Mär B', distanz:1.04, tempoMin:9+4/60, hfAvg:149, hfMax:172, kcal:85  },
+  { date:'08. Mär', distanz:6.99, tempoMin:8+36/60, hfAvg:152, hfMax:182, kcal:587 },
+  { date:'11. Mär ★', distanz:5.75, tempoMin:9+41/60, hfAvg:140, hfMax:171, kcal:449 },
+];
+
+const colors = {
+  orange:'rgba(255,107,43,', green:'rgba(43,255,155,', blue:'rgba(43,155,255,', red:'rgba(255,77,109,'
+};
+
+const chartDefaults = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{ legend:{display:false}, tooltip:{
+    backgroundColor:'#1a1a24', borderColor:'#2a2a3a', borderWidth:1,
+    titleColor:'#e8e8f0', bodyColor:'#9999b0',
+    titleFont:{family:'Space Mono',size:11}, bodyFont:{family:'Space Mono',size:11},
+  }},
+  scales:{
+    x:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#666680',font:{family:'Space Mono',size:10}}},
+    y:{grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#666680',font:{family:'Space Mono',size:10}}},
+  }
+};
+
+function fmtPace(v) {
+  const m = Math.floor(v), s = Math.round((v-m)*60);
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+function fmtTime(mins) {
+  const h = Math.floor(mins/60), m = Math.floor(mins%60), s = Math.round((mins%1)*60);
+  if(h>0) return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+// ─── STATIC CHARTS ──────────────────────────────────
+
+// Distanz
+new Chart(document.getElementById('distanzChart'), {
+  type:'bar',
+  data:{ labels:runs.map(r=>r.date), datasets:[{
+    data:runs.map(r=>r.distanz),
+    backgroundColor:runs.map((_,i)=> i===5?colors.orange+'0.9)':colors.orange+'0.4)'),
+    borderColor:runs.map((_,i)=>i===5?colors.orange+'1)':colors.orange+'0.6)'),
+    borderWidth:1, borderRadius:6,
+  }]},
+  options:{...chartDefaults, plugins:{...chartDefaults.plugins, tooltip:{...chartDefaults.plugins.tooltip, callbacks:{label:c=>`  ${c.raw} km`}}}}
+});
+
+// Tempo
+new Chart(document.getElementById('tempoChart'), {
+  type:'line',
+  data:{ labels:runs.map(r=>r.date), datasets:[{
+    data:runs.map(r=>r.tempoMin),
+    borderColor:colors.green+'1)', backgroundColor:colors.green+'0.1)',
+    fill:true, tension:0.4,
+    pointBackgroundColor:colors.green+'1)', pointRadius:5, pointHoverRadius:8,
+  }]},
+  options:{...chartDefaults,
+    scales:{...chartDefaults.scales, y:{...chartDefaults.scales.y, reverse:true, ticks:{...chartDefaults.scales.y.ticks, callback:fmtPace}}},
+    plugins:{...chartDefaults.plugins, tooltip:{...chartDefaults.plugins.tooltip, callbacks:{label:c=>`  ${fmtPace(c.raw)} /km`}}}
+  }
+});
+
+// Herz
+new Chart(document.getElementById('herzChart'), {
+  type:'bar',
+  data:{ labels:runs.map(r=>r.date), datasets:[
+    { label:'Ø HF', data:runs.map(r=>r.hfAvg),
+      backgroundColor:runs.map(r=>r.hfAvg<=145?colors.green+'0.7)':colors.orange+'0.7)'),
+      borderColor:runs.map(r=>r.hfAvg<=145?colors.green+'1)':colors.orange+'1)'),
+      borderWidth:1, borderRadius:4, barPercentage:0.6 },
+    { label:'Max HF', data:runs.map(r=>r.hfMax),
+      backgroundColor:colors.red+'0.3)', borderColor:colors.red+'0.8)',
+      borderWidth:1, borderRadius:4, barPercentage:0.6 },
+  ]},
+  options:{...chartDefaults,
+    plugins:{...chartDefaults.plugins,
+      legend:{display:true, labels:{color:'#666680',font:{family:'Space Mono',size:10},boxWidth:12}},
+      tooltip:{...chartDefaults.plugins.tooltip, callbacks:{label:c=>`  ${c.dataset.label}: ${c.raw} bpm`}}
+    },
+    scales:{...chartDefaults.scales, y:{...chartDefaults.scales.y, min:100, ticks:{...chartDefaults.scales.y.ticks, callback:v=>`${v} bpm`}}}
+  }
+});
+
+// Splits
+const splits=[
+  {km:1,tempo:'8:44',hf:138},{km:2,tempo:'9:59',hf:141},{km:3,tempo:'10:06',hf:140},
+  {km:4,tempo:'10:17',hf:139},{km:5,tempo:'9:48',hf:140},
+  {km:'0.7 🚀',tempo:'9:03',hf:143},
+];
+const bestP=8+44/60, worstP=10+17/60;
+document.getElementById('splitsBody').innerHTML = splits.map(s=>{
+  const pMin=parseInt(s.tempo.split(':')[0])+parseInt(s.tempo.split(':')[1])/60;
+  const pct=Math.round((1-(pMin-bestP)/(worstP-bestP))*100);
+  const fast=pMin<=8+30/60;
+  return `<tr>
+    <td><span class="km-badge">km ${s.km}</span></td>
+    <td>
+      <div style="color:${fast?'var(--green)':'var(--text)'};font-weight:${fast?700:400}">${s.tempo}</div>
+      <div class="pace-bar"><div class="pace-fill" style="width:${pct}%;background:${fast?'var(--green)':'var(--orange)'}"></div></div>
+    </td>
+    <td style="color:var(--muted)">${s.hf} bpm</td>
+  </tr>`;
+}).join('');
+
+// Zone doughnut
+new Chart(document.getElementById('zoneChart'), {
+  type:'doughnut',
+  data:{ labels:['Zone 2 (130–145)','Zone 3 (145–160)','Zone 4+ (160+)'], datasets:[{
+    data:[75,20,5],
+    backgroundColor:[colors.green+'0.8)',colors.orange+'0.8)',colors.red+'0.8)'],
+    borderColor:['#0a0a0f'], borderWidth:3, hoverOffset:8,
+  }]},
+  options:{ responsive:true, maintainAspectRatio:false, cutout:'68%',
+    plugins:{ legend:{display:true,position:'bottom',labels:{color:'#666680',font:{family:'Space Mono',size:10},boxWidth:10,padding:16}},
+      tooltip:{backgroundColor:'#1a1a24',borderColor:'#2a2a3a',borderWidth:1,titleColor:'#e8e8f0',bodyColor:'#9999b0',
+        titleFont:{family:'Space Mono',size:11},bodyFont:{family:'Space Mono',size:11},
+        callbacks:{label:c=>`  ${c.label}: ${c.raw}%`}
+      }
+    }
+  }
+});
+
+// Kalorien
+new Chart(document.getElementById('kalChart'), {
+  type:'bar',
+  data:{ labels:runs.map(r=>r.date), datasets:[{
+    data:runs.map(r=>r.kcal),
+    backgroundColor:runs.map((_,i)=>i===5?colors.blue+'0.9)':colors.blue+'0.4)'),
+    borderColor:runs.map((_,i)=>i===5?colors.blue+'1)':colors.blue+'0.6)'),
+    borderWidth:1, borderRadius:6,
+  }]},
+  options:{...chartDefaults, plugins:{...chartDefaults.plugins, tooltip:{...chartDefaults.plugins.tooltip, callbacks:{label:c=>`  ${c.raw} kcal`}}},
+    scales:{...chartDefaults.scales, y:{...chartDefaults.scales.y, ticks:{...chartDefaults.scales.y.ticks, callback:v=>`${v} kcal`}}}
+  }
+});
+
+// ─── PLANNER CHART ──────────────────────────────────
+const plannerLabels = [...runs.map(r=>r.date), 'Nächster Lauf'];
+
+const plannerChart = new Chart(document.getElementById('plannerChart'), {
+  type:'bar',
+  data:{
+    labels: plannerLabels,
+    datasets:[
+      { label:'Bisherige Läufe', data:[...runs.map(r=>r.distanz), null],
+        backgroundColor:colors.orange+'0.3)', borderColor:colors.orange+'0.5)',
+        borderWidth:1, borderRadius:6 },
+      { label:'Nächster Lauf', data:[...runs.map(()=>null), 7.0],
+        backgroundColor:colors.green+'0.85)', borderColor:colors.green+'1)',
+        borderWidth:2, borderRadius:6 },
+    ]
+  },
+  options:{...chartDefaults,
+    plugins:{...chartDefaults.plugins,
+      legend:{display:true, labels:{color:'#666680',font:{family:'Space Mono',size:10},boxWidth:12}},
+      tooltip:{...chartDefaults.plugins.tooltip, callbacks:{label:c=>`  ${c.raw} km`}}
+    },
+    scales:{...chartDefaults.scales, x:{...chartDefaults.scales.x, stacked:false}, y:{...chartDefaults.scales.y, ticks:{...chartDefaults.scales.y.ticks, callback:v=>`${v} km`}}}
+  }
+});
+
+// ─── WEATHER DATA (live from Karlsruhe) ─────────────
+const weather = {
+  temp: 12.7,       // °C – ideal range is 8–15°C
+  condition: 'cloudy',
+  rainChance: 78,   // % today
+  // Physiological impact formulas:
+  // HF: +1 bpm per 5°C above 15°C, -1 bpm per 5°C below 5°C
+  // Pace: heat >25°C slows ~5s/km per degree, cold <0°C slows ~3s/km
+  // Rain: slows ~5-10s/km due to wet shoes/clothes (heavier)
+};
+
+function getWeatherImpact(temp, rainChance) {
+  let hfDelta = 0, paceDeltaSec = 0, notes = [];
+
+  // Temperature effects
+  if (temp > 25) {
+    hfDelta += Math.round((temp - 25) * 0.8);
+    paceDeltaSec += Math.round((temp - 25) * 5);
+    notes.push(`🌡️ Hitze: +${hfDelta} bpm, langsamer`);
+  } else if (temp < 5) {
+    hfDelta -= Math.round((5 - temp) * 0.3);
+    paceDeltaSec += Math.round((5 - temp) * 2);
+    notes.push(`🥶 Kälte: Muskeln brauchen länger`);
+  } else if (temp >= 8 && temp <= 15) {
+    notes.push(`✅ Temperatur ideal für Laufen`);
+  } else {
+    notes.push(`🌡️ Temperatur akzeptabel`);
+  }
+
+  // Rain effects
+  if (rainChance > 60) {
+    paceDeltaSec += 8;
+    notes.push(`🌧️ Regen: ~8s/km langsamer (nasse Schuhe)`);
+  } else if (rainChance > 30) {
+    paceDeltaSec += 3;
+    notes.push(`🌦️ Leichter Regen möglich`);
+  }
+
+  // Overall rating
+  let rating, ratingColor, ratingBg;
+  const score = (temp >= 8 && temp <= 18 ? 2 : 0) + (rainChance < 30 ? 2 : rainChance < 60 ? 1 : 0);
+  if (score >= 4) { rating = 'PERFEKTE BEDINGUNGEN'; ratingColor = '#2bff9b'; ratingBg = 'rgba(43,255,155,0.1)'; }
+  else if (score >= 2) { rating = 'GUTE BEDINGUNGEN'; ratingColor = '#2bff9b'; ratingBg = 'rgba(43,255,155,0.1)'; }
+  else if (score >= 1) { rating = 'MÄSSIGE BEDINGUNGEN'; ratingColor = '#ff6b2b'; ratingBg = 'rgba(255,107,43,0.1)'; }
+  else { rating = 'SCHWIERIGE BEDINGUNGEN'; ratingColor = '#ff4d6d'; ratingBg = 'rgba(255,77,109,0.1)'; }
+
+  return { hfDelta, paceDeltaSec, notes, rating, ratingColor, ratingBg };
+}
+
+const wx = getWeatherImpact(weather.temp, weather.rainChance);
+
+// Update the static weather impact bar
+document.getElementById('wi-overall').textContent = wx.rating;
+document.getElementById('wi-overall').style.color = wx.ratingColor;
+document.getElementById('wi-overall').style.background = wx.ratingBg;
+document.getElementById('wi-overall').style.border = `1px solid ${wx.ratingColor}44`;
+
+
+const prevAvgDistanz = runs.reduce((a,r)=>a+r.distanz,0)/runs.length;
+const prevAvgTempo   = runs.reduce((a,r)=>a+r.tempoMin,0)/runs.length;
+const prevAvgHF      = runs.reduce((a,r)=>a+r.hfAvg,0)/runs.length;
+
+function getZone(hf) {
+  if(hf < 130) return { name:'Zone 1', desc:'Sehr locker · Erholung', color:'#2b9bff', bg:'rgba(43,155,255,0.08)', border:'rgba(43,155,255,0.3)' };
+  if(hf <= 145) return { name:'Zone 2 ✓', desc:'Fettverbrennung · Ideal für Ausdauer', color:'#2bff9b', bg:'rgba(43,255,155,0.08)', border:'rgba(43,255,155,0.3)' };
+  if(hf <= 160) return { name:'Zone 3', desc:'Anstrengend · Tempo mit Mühe haltbar', color:'#ff6b2b', bg:'rgba(255,107,43,0.08)', border:'rgba(255,107,43,0.3)' };
+  if(hf <= 175) return { name:'Zone 4', desc:'Hart · Kaum noch sprechen', color:'#ff4d6d', bg:'rgba(255,77,109,0.08)', border:'rgba(255,77,109,0.3)' };
+  return { name:'Zone 5 🔥', desc:'Maximal · Nur kurz haltbar', color:'#ff0040', bg:'rgba(255,0,64,0.08)', border:'rgba(255,0,64,0.3)' };
+}
+
+function updatePlanner() {
+  const distanz = parseFloat(document.getElementById('sl-distanz').value);
+  const tempoRaw = parseFloat(document.getElementById('sl-tempo').value);
+  const hf = parseInt(document.getElementById('sl-hf').value);
+  const hoehe = parseInt(document.getElementById('sl-hoehe').value);
+
+  const tempoMin = Math.round(tempoRaw * 60) / 60;
+
+  // Elevation HF bonus
+  const hfBonus = Math.round(hoehe / 100 * 3);
+
+  // Weather adjustments
+  const weatherHFDelta = wx.hfDelta;
+  const weatherPaceDelta = wx.paceDeltaSec / 60; // min/km
+  const effectiveHF = Math.min(182, hf + hfBonus + weatherHFDelta);
+  const effectiveTempo = tempoMin + weatherPaceDelta;
+
+  const intensityMult = 0.7 + (hf - 120) / 200;
+  const kcal = Math.round(distanz * 83 * intensityMult);
+  const totalMins = distanz * effectiveTempo;
+
+  const newRuns = [...runs, { distanz, tempoMin: effectiveTempo, hfAvg: effectiveHF }];
+  const newAvgDistanz = newRuns.reduce((a,r)=>a+r.distanz,0)/newRuns.length;
+  const newAvgTempo   = newRuns.reduce((a,r)=>a+r.tempoMin,0)/newRuns.length;
+  const newAvgHF      = newRuns.reduce((a,r)=>a+r.hfAvg,0)/newRuns.length;
+
+  // Slider labels
+  document.getElementById('val-distanz').textContent = `${distanz.toFixed(1).replace('.',',')} km`;
+  document.getElementById('val-tempo').textContent = `${fmtPace(tempoMin)} /km`;
+  document.getElementById('val-hf').textContent = `${hf} bpm`;
+  document.getElementById('val-hoehe').textContent = `${hoehe} m`;
+
+  const hfVal = document.getElementById('val-hf');
+  if(hf <= 145) { hfVal.classList.add('zone2'); } else { hfVal.classList.remove('zone2'); }
+
+  // Zone (weather-adjusted HF)
+  const zone = getZone(effectiveHF);
+  const zoneEl = document.getElementById('zone-indicator');
+  zoneEl.style.background = zone.bg;
+  zoneEl.style.borderColor = zone.border;
+  document.getElementById('zone-name').textContent = zone.name;
+  document.getElementById('zone-name').style.color = zone.color;
+  document.getElementById('zone-desc').textContent = zone.desc;
+
+  // Predictions (show weather-adjusted values)
+  document.getElementById('pred-kcal').textContent = `${kcal} kcal`;
+  document.getElementById('pred-zeit').textContent = fmtTime(totalMins) + (weatherPaceDelta > 0 ? ` (+${Math.round(weatherPaceDelta * distanz)} Min Wetter)` : '');
+
+  // HF impact: elevation + weather combined
+  const totalHFImpact = hfBonus + weatherHFDelta;
+  const hfImpactEl = document.getElementById('pred-hf-impact');
+  let impactText = '';
+  if (hfBonus > 0 && weatherHFDelta !== 0) impactText = `+${hfBonus} (Höhe) ${weatherHFDelta>=0?'+':''}${weatherHFDelta} (Wetter) = ${totalHFImpact>=0?'+':''}${totalHFImpact} bpm`;
+  else if (hfBonus > 0) impactText = `+${hfBonus} bpm (Höhe)`;
+  else if (weatherHFDelta !== 0) impactText = `${weatherHFDelta>=0?'+':''}${weatherHFDelta} bpm (Wetter)`;
+  else impactText = `0 bpm`;
+  hfImpactEl.textContent = impactText;
+  hfImpactEl.className = 'pred-metric-val ' + (totalHFImpact > 3 ? 'warn' : 'neutral');
+
+  const pmHfImpact = document.getElementById('pm-hf-impact');
+  pmHfImpact.className = 'pred-metric ' + (totalHFImpact > 3 ? 'warning' : '');
+
+  // Averages
+  document.getElementById('avg-distanz').textContent = `${newAvgDistanz.toFixed(1).replace('.',',')} km`;
+  document.getElementById('avg-tempo').textContent = fmtPace(newAvgTempo);
+  document.getElementById('avg-hf').textContent = `${Math.round(newAvgHF)} bpm`;
+
+  const dDist = newAvgDistanz - prevAvgDistanz;
+  const dTempo = newAvgTempo - prevAvgTempo;
+  const dHF = newAvgHF - prevAvgHF;
+
+  document.getElementById('delta-distanz').textContent = `${dDist>=0?'+':''}${dDist.toFixed(1)} km`;
+  document.getElementById('delta-distanz').style.color = dDist >= 0 ? '#2bff9b' : '#ff4d6d';
+
+  document.getElementById('delta-tempo').textContent = dTempo<=0 ? `${fmtPace(Math.abs(dTempo))} schneller` : `${fmtPace(dTempo)} langsamer`;
+  document.getElementById('delta-tempo').style.color = dTempo <= 0 ? '#2bff9b' : '#ff6b2b';
+
+  document.getElementById('delta-hf').textContent = `${dHF>=0?'+':''}${dHF.toFixed(1)} bpm`;
+  document.getElementById('delta-hf').style.color = dHF <= 0 ? '#2bff9b' : '#ff6b2b';
+
+  // Trend messages including weather
+  const msgs = [];
+  if(effectiveHF <= 145 && distanz >= 5) msgs.push('✅ Zone 2 auch mit Wettereinfluss!');
+  else if(hf <= 145 && effectiveHF > 145) msgs.push('⚠️ Wetter drückt dich aus Zone 2 – etwas langsamer laufen!');
+  else if(hf <= 145) msgs.push('✅ Zone 2 gehalten – gut!');
+  if(distanz > 6.99) msgs.push('📈 Neue Bestdistanz!');
+  if(wx.rainChance > 60) msgs.push('🌧️ Regenkleidung empfohlen');
+  if(hf > 160) msgs.push('⚠️ Sehr intensive Belastung');
+  document.getElementById('trend-msg').textContent = msgs.join('  ·  ');
+
+  plannerChart.data.datasets[1].data = [...runs.map(()=>null), distanz];
+  plannerChart.update('none');
+}
+
+// Slider range fill (visual progress)
+function updateSliderFill(slider) {
+  const min = parseFloat(slider.min), max = parseFloat(slider.max), val = parseFloat(slider.value);
+  const pct = (val - min) / (max - min) * 100;
+  const isGreen = slider.classList.contains('green-slider');
+  const color = isGreen ? '#2bff9b' : '#ff6b2b';
+  slider.style.background = `linear-gradient(to right, ${color} ${pct}%, #2a2a3a ${pct}%)`;
+}
+
+document.querySelectorAll('input[type=range]').forEach(sl => {
+  updateSliderFill(sl);
+  sl.addEventListener('input', () => { updateSliderFill(sl); updatePlanner(); });
+});
+
+updatePlanner();
+
+// ─── RACE TIME PREDICTOR ────────────────────────────
+// Uses Riegel formula: T2 = T1 * (D2/D1)^1.06
+// Based on best recent performance: 7km in ~60:12 at effort
+// For realistic race pace we use a slightly adjusted base
+
+const baseDist = 6.99;   // km
+const baseTime = 60.2;   // minutes (today's run)
+const riegel = 1.06;
+
+const races = [
+  { dist: 5,    label: '5 km',         emoji: '🏃', color: '#2bff9b', colorDim: 'rgba(43,255,155,0.15)', goalMonths: 1,  goalTime: null },
+  { dist: 10,   label: '10 km',        emoji: '🏅', color: '#2b9bff', colorDim: 'rgba(43,155,255,0.15)', goalMonths: 3,  goalTime: null },
+  { dist: 21.1, label: 'Halbmarathon', emoji: '🥈', color: '#ff6b2b', colorDim: 'rgba(255,107,43,0.15)', goalMonths: 9,  goalTime: null },
+  { dist: 42.2, label: 'Marathon',     emoji: '🏆', color: '#ff4d6d', colorDim: 'rgba(255,77,109,0.15)', goalMonths: 18, goalTime: null },
+];
+
+// Goal times (realistic targets after training)
+const goalTimes = [27, 58, 130, 285]; // minutes
+
+function riegelTime(dist) {
+  return baseTime * Math.pow(dist / baseDist, riegel);
+}
+
+function formatRaceTime(mins) {
+  const h = Math.floor(mins / 60);
+  const m = Math.floor(mins % 60);
+  const s = Math.round((mins % 1) * 60);
+  if (h > 0) return `${h}:${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+  return `${m}:${s.toString().padStart(2,'0')}`;
+}
+
+function racePace(dist) {
+  const mins = riegelTime(dist);
+  return mins / dist; // min/km
+}
+
+// Build race cards
+const raceCardsEl = document.getElementById('race-cards');
+races.forEach((r, i) => {
+  const timeMins = riegelTime(r.dist);
+  const pace = racePace(r.dist);
+  const goalT = goalTimes[i];
+  const improvement = Math.round(timeMins - goalT);
+
+  raceCardsEl.innerHTML += `
+    <div style="
+      background: ${r.colorDim};
+      border: 1px solid ${r.color}44;
+      border-radius: 16px; padding: 20px;
+      position:relative; overflow:hidden;
+      transition: transform 0.2s;
+    " onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform='translateY(0)'">
+      <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${r.color};border-radius:16px 16px 0 0"></div>
+      <div style="font-size:24px;margin-bottom:8px">${r.emoji}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:6px">${r.label}</div>
+      <div style="font-size:clamp(20px,2.5vw,28px);font-weight:800;color:${r.color};letter-spacing:-1px;line-height:1">${formatRaceTime(timeMins)}</div>
+      <div style="font-family:var(--font-mono);font-size:10px;color:var(--muted);margin-top:6px">Ø ${fmtPace(pace)} /km</div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.06);">
+        <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Ziel in ${r.goalMonths} Mon.</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-top:2px">${formatRaceTime(goalT)}</div>
+        <div style="font-family:var(--font-mono);font-size:9px;margin-top:3px;color:var(--muted)">noch ${improvement > 0 ? '-' : '+'}${Math.abs(improvement)} Min</div>
+      </div>
+    </div>
+  `;
+});
+
+// Bar chart: current vs goal
+const raceLabels = races.map(r => r.label);
+const currentTimes = races.map(r => parseFloat(riegelTime(r.dist).toFixed(1)));
+const goalTimesArr = goalTimes;
+
+new Chart(document.getElementById('raceTimeChart'), {
+  type: 'bar',
+  data: {
+    labels: raceLabels,
+    datasets: [
+      {
+        label: 'Aktuell (geschätzt)',
+        data: currentTimes,
+        backgroundColor: ['rgba(43,255,155,0.7)', 'rgba(43,155,255,0.7)', 'rgba(255,107,43,0.7)', 'rgba(255,77,109,0.7)'],
+        borderColor: ['#2bff9b', '#2b9bff', '#ff6b2b', '#ff4d6d'],
+        borderWidth: 1, borderRadius: 6, barPercentage: 0.6,
+      },
+      {
+        label: 'Ziel',
+        data: goalTimesArr,
+        backgroundColor: 'rgba(255,255,255,0.06)',
+        borderColor: 'rgba(255,255,255,0.2)',
+        borderWidth: 1, borderRadius: 6, barPercentage: 0.6,
+        borderDash: [4,4],
+      }
+    ]
+  },
+  options: {
+    ...chartDefaults,
+    plugins: {
+      ...chartDefaults.plugins,
+      legend: { display: true, labels: { color: '#666680', font: { family: 'Space Mono', size: 10 }, boxWidth: 12 } },
+      tooltip: { ...chartDefaults.plugins.tooltip, callbacks: {
+        label: c => `  ${c.dataset.label}: ${formatRaceTime(c.raw)}`
+      }}
+    },
+    scales: {
+      ...chartDefaults.scales,
+      y: { ...chartDefaults.scales.y, ticks: { ...chartDefaults.scales.y.ticks, callback: v => {
+        const h = Math.floor(v/60), m = Math.floor(v%60);
+        return h > 0 ? `${h}h${m}m` : `${m} min`;
+      }}}
+    }
+  }
+});
+
+// Pace drop chart
+const paceDists = [1, 2, 3, 5, 8, 10, 15, 21.1, 30, 42.2];
+const pacePredictions = paceDists.map(d => racePace(d));
+
+new Chart(document.getElementById('paceDropChart'), {
+  type: 'line',
+  data: {
+    labels: paceDists.map(d => d < 10 ? `${d}km` : `${d}km`),
+    datasets: [{
+      data: pacePredictions,
+      borderColor: 'rgba(43,155,255,1)',
+      backgroundColor: 'rgba(43,155,255,0.08)',
+      fill: true, tension: 0.4,
+      pointBackgroundColor: paceDists.map(d =>
+        [5,10,21.1,42.2].includes(d) ? '#ff6b2b' : 'rgba(43,155,255,0.8)'
+      ),
+      pointRadius: paceDists.map(d => [5,10,21.1,42.2].includes(d) ? 8 : 4),
+      pointHoverRadius: 10,
+    }]
+  },
+  options: {
+    ...chartDefaults,
+    scales: {
+      ...chartDefaults.scales,
+      y: { ...chartDefaults.scales.y, reverse: true, ticks: { ...chartDefaults.scales.y.ticks, callback: fmtPace } }
+    },
+    plugins: {
+      ...chartDefaults.plugins,
+      tooltip: { ...chartDefaults.plugins.tooltip, callbacks: {
+        label: c => `  Ø Tempo: ${fmtPace(c.raw)} /km`
+      }}
+    }
+  }
+});
+
+// Timeline
+const timelineEl = document.getElementById('timeline');
+const milestones = [
+  { label: '5 km unter 30 Min', months: 1, done: false, color: '#2bff9b' },
+  { label: '10 km unter 1 Stunde', months: 3, done: false, color: '#2b9bff' },
+  { label: '10 km unter 55 Min', months: 5, done: false, color: '#2b9bff' },
+  { label: 'Halbmarathon finishen', months: 9, done: false, color: '#ff6b2b' },
+  { label: 'Halbmarathon unter 2h', months: 12, done: false, color: '#ff6b2b' },
+  { label: 'Marathon finishen', months: 18, done: false, color: '#ff4d6d' },
+];
+
+timelineEl.innerHTML = milestones.map((m, i) => `
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="
+      width:32px;height:32px;border-radius:50%;
+      background:${m.color}22;border:2px solid ${m.color}55;
+      display:flex;align-items:center;justify-content:center;
+      font-family:var(--font-mono);font-size:10px;color:${m.color};
+      flex-shrink:0;font-weight:700;
+    ">${m.months}</div>
+    <div style="flex:1;">
+      <div style="font-size:12px;font-weight:600;color:var(--text)">${m.label}</div>
+      <div style="font-family:var(--font-mono);font-size:9px;color:var(--muted);margin-top:1px">in ca. ${m.months} Monat${m.months>1?'en':''}</div>
+    </div>
+    <div style="
+      width:8px;height:8px;border-radius:50%;
+      background:${m.color}44;border:1.5px solid ${m.color};
+    "></div>
+  </div>
+  ${i < milestones.length-1 ? `<div style="margin-left:15px;width:2px;height:8px;background:var(--border);margin-top:-4px;margin-bottom:-4px;"></div>` : ''}
+`).join('');
+
+updatePlanner();
+</script>
+
+</body>
+</html>
